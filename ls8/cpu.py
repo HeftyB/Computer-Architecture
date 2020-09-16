@@ -2,10 +2,15 @@
 
 import sys
 
+SP = 7
+
 LDI = 0b10000010 # 0x820RII
 PRN = 0b01000111 # 0x450R
 HLT = 0b00000001 # 0x01
 MUL = 0b10100010 # 
+PUSH = 0b01000101 # 
+POP = 0b01000110 #
+
 
 alu_dict = {}
 alu_dict[0b00000000] = "ADD"
@@ -37,6 +42,7 @@ class CPU:
         """Load a program into memory."""
 
         address = 0
+        self.reg[SP] = 244
 
         # For now, we've just hardcoded a program:
 
@@ -147,6 +153,15 @@ class CPU:
 
             elif ((ir & 0b00100000) >> 5) == 0b001:
                 self.alu(alu_dict[(ir & 0b00001111)], operand_a, operand_b) 
+
+            elif ir == PUSH:
+                self.reg[SP] -= 1
+                self.ram[self.reg[SP]] = self.reg[operand_a]
+            
+            elif ir == POP:
+                self.reg[operand_a] = self.ram[self.reg[SP]]
+                self.reg[SP] += 1
+
             
             self.pc += ((ir & 0b11000000) >> 6) + 1
             
