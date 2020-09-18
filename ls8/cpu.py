@@ -3,6 +3,7 @@
 import sys
 
 SP = 7
+FL = 4
 
 LDI = 0b10000010 # 0x820RII
 PRN = 0b01000111 # 0x450R
@@ -10,6 +11,11 @@ HLT = 0b00000001 # 0x01
 MUL = 0b10100010 # 
 PUSH = 0b01000101 # 
 POP = 0b01000110 #
+CALL = 0b01010000 # 
+RET = 0b00010001 #
+JEQ = 0b01010101 # 
+JNE = 0b01010110 # 
+JMP = 0b01010100 # 
 
 
 alu_dict = {}
@@ -43,22 +49,9 @@ class CPU:
 
         address = 0
         self.reg[SP] = 244
+        self.reg[FL] = 0b00000000
 
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010, # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111, # PRN R0
-        #     0b00000000,
-        #     0b00000001, # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
+        
         if len(sys.argv) != 2:
             print("MISSING ARG --->  Usage: cpu.py FILENAME")
             sys.exit(1)
@@ -110,6 +103,16 @@ class CPU:
         elif op == "MOD":
             self.reg[reg_a] %= self.reg[reg_b]
 
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.reg[FL] = 0b00000001
+
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.reg[FL] = 0b00000100
+
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.reg[FL] = 0b00000010
+
         else:
             print(op)
             raise Exception("Unsupported ALU operation")
@@ -140,7 +143,6 @@ class CPU:
             ir = self.ram[self.pc]
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
-            # str_ir = str(ir)
 
             if ir == HLT:
                 break
@@ -162,8 +164,39 @@ class CPU:
                 self.reg[operand_a] = self.ram[self.reg[SP]]
                 self.reg[SP] += 1
 
+            elif ir == CALL:
+                self.reg[SP] -= 1
+                self.ram[self.reg[SP]] = self.pc + 2
+                self.pc = self.reg[operand_a]
+
+
+            elif ir == RET:
+                self.pc = self.ram[self.reg[SP]]
+                self.reg[SP] += 1
+
+            elif ir == JEQ:
+                if (self.reg[FL] & 0b00000001) == 1:
+                    self.pc = self.reg[operand_a]
+                    continue
+                else:
+                    self.pc += 2
+
+            elif ir == JNE:
+                if (self.reg[FL] & 0b00000001) == 0:
+                    self.pc = self.reg[operand_a]
+                    continue
+                else:
+                    self.pc += 2
+
+            elif ir == JMP:
+                self.pc = self.reg[operand_a]
+                continue
             
-            self.pc += ((ir & 0b11000000) >> 6) + 1
+            if ((ir & 0b00010000) >> 4) == 1:
+                continue
+
+            else:
+                self.pc += ((ir & 0b11000000) >> 6) + 1
             
 
 
